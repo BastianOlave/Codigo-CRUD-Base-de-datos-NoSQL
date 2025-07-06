@@ -1,0 +1,26 @@
+[{
+  "_id": {
+    "$oid": "686ac6edce2f9da0b3c5d09a"
+  },
+  "nombre": "Felipe",
+  "apellidos": "Monsalve Cea",
+  "direccion": {
+    "calle": "Av.Angol",
+    "numero": 277,
+    "ciudad": "Concepción"
+  },
+  "fecha_registro": "2025-05-15"
+},
+{
+  "_id": {
+    "$oid": "686ac71a1befa336d5118473"
+  },
+  "nombre": "Fernanda",
+  "apellidos": "Valdebenito",
+  "direccion": {
+    "calle": "3",
+    "numero": 3,
+    "ciudad": "concepcion"
+  },
+  "fecha_registro": "2025-05-25"
+}]
