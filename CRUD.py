@@ -65,6 +65,10 @@ def ejecutar_creacion(entidad):
     elif entidad == "pedidos":
         mostrar_frame(crear_pedido_form)
 
+def ejecutar_lectura(entidad):
+    if entidad == "clientes":
+        mostrar_frame(actualizar_cliente_form)
+
 
 # ---------- Pantalla principal ----------
 def pantalla_principal(frame):
@@ -460,8 +464,34 @@ def actualizar_cliente_form(frame):
         ("Ciudad", "ciudad"),
         ("Fecha de registro (YYYY-MM-DD)", "fecha_registro")
     ]
-    
 
+    for etiqueta, clave in campos:
+        tk.Label(frame,
+                 text=etiqueta + ":",
+                 bg="lightblue",
+                 font=("Helvetica", 12)).pack()
+        entrada = tk.Entry(frame)
+        entrada.pack()
+        entradas[clave] = entrada
+    
+    def cargar_cliente(event=None):
+        cliente = db.Clientes.find_one({"id_cliente": selected_cliente.get()})
+        if cliente:
+            entradas["nombre"].delete(0, tk.END)
+            entradas["nombre"].insert(0, cliente.get("nombre", ""))
+            entradas["apellidos"].delete(0, tk.END)
+            entradas["apellidos"].insert(0, cliente.get("apellidos", ""))
+            entradas["calle"].delete(0, tk.END)
+            entradas["calle"].insert(0, cliente.get("direccion", {}).get("calle", ""))
+            entradas["numero"].delete(0, tk.END)
+            entradas["numero"].insert(0, cliente.get("direccion", {}).get("numero", ""))
+            entradas["ciudad"].delete(0, tk.END)
+            entradas["ciudad"].insert(0, cliente.get("direccion", {}).get("ciudad", ""))
+            entradas["fecha_registro"].delete(0, tk.END)
+            entradas["fecha_registro"].insert(0, cliente.get("fecha_registro", ""))
+        else:
+            log("❌ Cliente no encontrado.")
+    cliente_menu.bind("<<ComboboxSelected>>", cargar_cliente)
 
 # ---------- Lanzar app ----------
 mostrar_frame(pantalla_principal)
