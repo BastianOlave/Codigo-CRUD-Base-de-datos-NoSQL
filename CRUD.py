@@ -65,9 +65,25 @@ def ejecutar_creacion(entidad):
     elif entidad == "pedidos":
         mostrar_frame(crear_pedido_form)
 
-def ejecutar_lectura(entidad):
+def ejecutar_Actualizacion(entidad):
     if entidad == "clientes":
         mostrar_frame(actualizar_cliente_form)
+    elif entidad == "productos":
+        mostrar_frame(actualizar_producto_form)
+    elif entidad == "pedidos":
+        mostrar_frame(actualizar_pedido_form)
+
+def ejecutar_eliminacion(entidad):
+    if entidad == "clientes":
+        mostrar_frame(eliminar_cliente_form)
+    elif entidad == "productos":
+        mostrar_frame(eliminar_producto_form)
+    elif entidad == "pedidos":
+        mostrar_frame(eliminar_pedido_form)
+
+def ejecutar_consulta(entidad):
+    if entidad == "clientes_ciudad":
+        mostrar_frame(consulta_clientes_por_ciudad)
 
 
 # ---------- Pantalla principal ----------
@@ -95,9 +111,10 @@ def pantalla_principal(frame):
 
     opciones = [
         ("Crear Documento", lambda: mostrar_frame(lambda f: selector_entidad(f, "Crear Documento", ejecutar_creacion))),
-        ("Leer Documentos", lambda: mostrar_frame(lambda f: selector_entidad(f, "Leer Documentos", ejecutar_lectura))),
-        ("Actualizar Documento", lambda: mostrar_frame(lambda f: selector_entidad(f, "Actualizar Documento", ejecutar_actualizacion))),
-        ("Eliminar Documento", lambda: mostrar_frame(lambda f: selector_entidad(f, "Eliminar Documento", ejecutar_eliminacion)))
+        ("Actualizar Documento", lambda: mostrar_frame(lambda f: selector_entidad(f, "Actualizar Documento", ejecutar_Actualizacion))),
+        ("Eliminar Documento", lambda: mostrar_frame(lambda f: selector_entidad(f, "Eliminar Documento", ejecutar_eliminacion))),
+        ("Clientes por Ciudad", lambda: mostrar_frame(lambda f: ejecutar_consulta("clientes_ciudad")))
+
     ]
 
 
@@ -178,11 +195,11 @@ def crear_cliente_form(frame):
             
             def generar_id_cliente():
                 ultimo = db.Clientes.find_one(
-                    {"_id": {"$regex": "^CL[0-9]+$"}},
-                    sort=[("_id", -1)]
+                    {"id_cliente": {"$regex": "^CL[0-9]+$"}},
+                    sort=[("id_cliente", -1)]
                 )
                 if ultimo:
-                    ultimo_num = int(ultimo["_id"][2:])
+                    ultimo_num = int(ultimo["id_cliente"][2:])
                     return f"CL{ultimo_num + 1:03}"
                 else:
                     return "CL001"
@@ -492,6 +509,280 @@ def actualizar_cliente_form(frame):
         else:
             log("❌ Cliente no encontrado.")
     cliente_menu.bind("<<ComboboxSelected>>", cargar_cliente)
+
+    def guardar_actualizacion():
+        try:
+            datos_actualizados = {
+                "nombre": entradas["nombre"].get(),
+                "apellidos": entradas["apellidos"].get(),
+                "direccion": {
+                    "calle": entradas["calle"].get(),
+                    "numero": int(entradas["numero"].get()),
+                    "ciudad": entradas["ciudad"].get()
+                },
+                "fecha_registro": entradas["fecha_registro"].get()
+            }
+            db.Clientes.update_one(
+                {"id_cliente": selected_cliente.get()},
+                {"$set": datos_actualizados}
+            )
+            messagebox.showinfo("Éxito", "Cliente actualizado correctamente.")
+            log(f"✅ Cliente '{selected_cliente.get()}' actualizado.")
+            mostrar_frame(pantalla_principal)
+        except ValueError:
+            messagebox.showerror("Error", "Número de casa debe ser un entero.")
+            log("❌ Error al actualizar: número de casa inválido.")
+    tk.Button(frame, 
+              text="Guardar Cambios", 
+              bg="green", 
+              fg="white", 
+              font=("Helvetica", 12), 
+              command=guardar_actualizacion).pack(pady=10)
+    tk.Button(frame,
+                text="← Volver", 
+                bg="gray", 
+                command=lambda: mostrar_frame(pantalla_principal)).pack(pady=5)
+    
+# ---------- Función para actualizar productos ----------
+
+def actualizar_producto_form(frame):
+    tk.Label(frame, text="Formulario - Actualizar Producto", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    productos = [p["codigo_producto"] for p in db.Productos.find()]
+    selected_producto = tk.StringVar()
+    entradas = {}
+
+    tk.Label(frame, text="Seleccione un producto:", bg="lightblue").pack()
+    producto_menu = ttk.Combobox(frame, textvariable=selected_producto, values=productos, state="readonly")
+    producto_menu.pack()
+
+    campos = [
+        ("Nombre", "nombre_producto"),
+        ("Precio", "precio"),
+        ("Stock", "stock")
+    ]
+
+    for etiqueta, clave in campos:
+        tk.Label(frame, text=etiqueta + ":", bg="lightblue", font=("Helvetica", 12)).pack()
+        entrada = tk.Entry(frame)
+        entrada.pack()
+        entradas[clave] = entrada
+
+    def cargar_producto(event=None):
+        producto = db.Productos.find_one({"codigo_producto": selected_producto.get()})
+        if producto:
+            entradas["nombre_producto"].delete(0, tk.END)
+            entradas["nombre_producto"].insert(0, producto.get("nombre_producto", ""))
+            entradas["precio"].delete(0, tk.END)
+            entradas["precio"].insert(0, producto.get("precio", ""))
+            entradas["stock"].delete(0, tk.END)
+            entradas["stock"].insert(0, producto.get("stock", ""))
+        else:
+            log("❌ Producto no encontrado.")
+
+    producto_menu.bind("<<ComboboxSelected>>", cargar_producto)
+
+    def guardar_producto():
+        try:
+            precio = float(entradas["precio"].get())
+            stock = int(entradas["stock"].get())
+            estado = "Disponible" if stock > 0 else "No disponible"
+
+            producto_actualizado = {
+                "nombre_producto": entradas["nombre_producto"].get(),
+                "precio": precio,
+                "stock": stock,
+                "estado": estado
+            }
+
+            db.Productos.update_one(
+                {"codigo_producto": selected_producto.get()},
+                {"$set": producto_actualizado}
+            )
+            messagebox.showinfo("Éxito", "Producto actualizado correctamente.")
+            log(f"✅ Producto '{selected_producto.get()}' actualizado.")
+            mostrar_frame(pantalla_principal)
+        except ValueError:
+            messagebox.showerror("Error", "Precio y stock deben ser válidos.")
+            log("❌ Error al actualizar: datos inválidos.")
+
+    tk.Button(frame, text="Guardar Cambios", bg="green", fg="white", command=guardar_producto).pack(pady=10)
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack(pady=5)
+
+# ---------- Función para actualizar pedidos ----------
+
+def actualizar_pedido_form(frame):
+    tk.Label(frame, text="Formulario - Actualizar Pedido", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    pedidos = [p["codigo_pedido"] for p in db.Pedidos.find()]
+    selected_pedido = tk.StringVar()
+    fecha = tk.StringVar()
+    metodo_pago = tk.StringVar()
+    total = tk.DoubleVar()
+
+    tk.Label(frame, text="Seleccione un pedido:", bg="lightblue").pack()
+    pedido_menu = ttk.Combobox(frame, textvariable=selected_pedido, values=pedidos, state="readonly")
+    pedido_menu.pack()
+
+    tk.Label(frame, text="Fecha del pedido (YYYY-MM-DD):", bg="lightblue").pack()
+    entry_fecha = tk.Entry(frame, textvariable=fecha)
+    entry_fecha.pack()
+
+    tk.Label(frame, text="Método de pago:", bg="lightblue").pack()
+    metodos = ["Efectivo", "Tarjeta de crédito", "Transferencia bancaria", "Débito"]
+    metodo_pago_menu = ttk.Combobox(frame, textvariable=metodo_pago, values=metodos, state="readonly")
+    metodo_pago_menu.pack()
+
+    tk.Label(frame, text="Total actual:", bg="lightblue").pack()
+    tk.Label(frame, textvariable=total, font=("Helvetica", 12, "bold"), bg="lightblue").pack()
+
+    def cargar_pedido(event=None):
+        pedido = db.Pedidos.find_one({"codigo_pedido": selected_pedido.get()})
+        if pedido:
+            fecha.set(pedido.get("fecha_pedido", ""))
+            metodo_pago.set(pedido.get("metodo_pago", ""))
+            total.set(pedido.get("total_compra", 0))
+        else:
+            log("❌ Pedido no encontrado.")
+
+    pedido_menu.bind("<<ComboboxSelected>>", cargar_pedido)
+
+    def guardar_actualizacion():
+        if not selected_pedido.get():
+            return
+        pedido_actualizado = {
+            "fecha_pedido": fecha.get(),
+            "metodo_pago": metodo_pago.get()
+            # No se actualiza productos ni total aquí por simplicidad
+        }
+        db.Pedidos.update_one(
+            {"codigo_pedido": selected_pedido.get()},
+            {"$set": pedido_actualizado}
+        )
+        messagebox.showinfo("Éxito", "Pedido actualizado correctamente.")
+        log(f"✅ Pedido '{selected_pedido.get()}' actualizado.")
+        mostrar_frame(pantalla_principal)
+
+    tk.Button(frame, text="Guardar Cambios", bg="green", fg="white", command=guardar_actualizacion).pack(pady=10)
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack(pady=5)
+
+# ---------- Función para eliminar clientes ----------
+
+def eliminar_cliente_form(frame):
+    tk.Label(frame, text="Eliminar Cliente", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    clientes = [cliente["id_cliente"] for cliente in db.Clientes.find()]
+    selected = tk.StringVar()
+
+    tk.Label(frame, text="Seleccione un cliente a eliminar:", bg="lightblue").pack()
+    selector = ttk.Combobox(frame, textvariable=selected, values=clientes, state="readonly")
+    selector.pack(pady=5)
+
+    def eliminar():
+        if not selected.get():
+            return
+        if messagebox.askyesno("Confirmar", f"¿Eliminar cliente '{selected.get()}'?"):
+            db.Clientes.delete_one({"id_cliente": selected.get()})
+            log(f"🗑️ Cliente '{selected.get()}' eliminado.")
+            messagebox.showinfo("Eliminado", "Cliente eliminado exitosamente.")
+            mostrar_frame(pantalla_principal)
+
+    tk.Button(frame, text="Eliminar", bg="red", fg="white", command=eliminar).pack(pady=10)
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack()
+
+# ---------- Función para eliminar productos ----------
+
+def eliminar_producto_form(frame):
+    tk.Label(frame, text="Eliminar Producto", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    productos = [prod["codigo_producto"] for prod in db.Productos.find()]
+    selected = tk.StringVar()
+
+    tk.Label(frame, text="Seleccione un producto a eliminar:", bg="lightblue").pack()
+    selector = ttk.Combobox(frame, textvariable=selected, values=productos, state="readonly")
+    selector.pack(pady=5)
+
+    def eliminar():
+        if not selected.get():
+            return
+        if messagebox.askyesno("Confirmar", f"¿Eliminar producto '{selected.get()}'?"):
+            db.Productos.delete_one({"codigo_producto": selected.get()})
+            log(f"🗑️ Producto '{selected.get()}' eliminado.")
+            messagebox.showinfo("Eliminado", "Producto eliminado exitosamente.")
+            mostrar_frame(pantalla_principal)
+
+    tk.Button(frame, text="Eliminar", bg="red", fg="white", command=eliminar).pack(pady=10)
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack()
+
+# ---------- Función para eliminar pedidos ----------
+
+def eliminar_pedido_form(frame):
+    tk.Label(frame, text="Eliminar Pedido", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    pedidos = [p["codigo_pedido"] for p in db.Pedidos.find()]
+    selected = tk.StringVar()
+
+    tk.Label(frame, text="Seleccione un pedido a eliminar:", bg="lightblue").pack()
+    selector = ttk.Combobox(frame, textvariable=selected, values=pedidos, state="readonly")
+    selector.pack(pady=5)
+
+    def eliminar():
+        if not selected.get():
+            return
+        if messagebox.askyesno("Confirmar", f"¿Eliminar pedido '{selected.get()}'?"):
+            db.Pedidos.delete_one({"codigo_pedido": selected.get()})
+            log(f"🗑️ Pedido '{selected.get()}' eliminado.")
+            messagebox.showinfo("Eliminado", "Pedido eliminado exitosamente.")
+            mostrar_frame(pantalla_principal)
+
+    tk.Button(frame, text="Eliminar", bg="red", fg="white", command=eliminar).pack(pady=10)
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack()
+
+# ---------- Consulta de clientes por ciudad ----------
+
+def consulta_clientes_por_ciudad(frame):
+    tk.Label(frame, text="Consulta de Clientes por Ciudad", font=("Helvetica", 18), bg="lightblue").pack(pady=10)
+
+    # ---------- Obtener ciudades únicas ----------
+    ciudades = sorted(set(cliente.get("direccion", {}).get("ciudad", "") for cliente in db.Clientes.find()))
+    selected_ciudad = tk.StringVar()
+
+    # ---------- Combobox de ciudades ----------
+    tk.Label(frame, text="Seleccione una ciudad:", bg="lightblue").pack()
+    ciudad_combo = ttk.Combobox(frame, textvariable=selected_ciudad, values=ciudades, state="readonly")
+    ciudad_combo.pack(pady=5)
+
+    # ---------- Frame para los resultados ----------
+    resultados_frame = tk.Frame(frame, bg="white", relief=tk.SUNKEN, bd=2)
+    resultados_frame.pack(pady=20, padx=30, fill=tk.X)
+
+    def consultar():
+        for widget in resultados_frame.winfo_children():
+            widget.destroy()
+
+        ciudad = selected_ciudad.get()
+        if not ciudad:
+            log("⚠️ Debes seleccionar una ciudad.")
+            return
+
+        clientes = db.Clientes.find({"direccion.ciudad": ciudad})
+        encontrados = list(clientes)
+
+        if not encontrados:
+            tk.Label(resultados_frame, text="No se encontraron clientes.", bg="white", font=("Helvetica", 12)).pack()
+            log(f"🔍 Sin resultados para ciudad '{ciudad}'.")
+        else:
+            for cli in encontrados:
+                nombre = f"{cli.get('nombre', '')} {cli.get('apellidos', '')}"
+                tk.Label(resultados_frame, text=nombre, anchor="w", bg="white", font=("Helvetica", 12)).pack(fill=tk.X)
+            log(f"📋 {len(encontrados)} cliente(s) encontrados en '{ciudad}'.")
+
+    # ---------- Botón consultar ----------
+    tk.Button(frame, text="Consultar", bg="blue", fg="white", command=consultar).pack(pady=10)
+
+    # ---------- Botón volver ----------
+    tk.Button(frame, text="← Volver", bg="gray", command=lambda: mostrar_frame(pantalla_principal)).pack(pady=5)
+
 
 # ---------- Lanzar app ----------
 mostrar_frame(pantalla_principal)
